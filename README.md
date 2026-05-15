@@ -97,6 +97,21 @@ transformer-risk-agent/
 - `make demo` → launch Streamlit app
 - `make test` → run pytest suite
 
+## Deploy to Azure App Service (Linux)
+Use the copy/paste deployment guide in:
+
+- `docs/azure-app-service.md`
+
+Quick path:
+1. Sign in with Azure CLI and select your subscription.
+2. Create resource group, Linux plan, and Python 3.11 Web App.
+3. Configure startup command for Streamlit (`src/ui/app.py`) and app settings.
+4. Deploy from this repo.
+
+A reusable script is included at:
+
+- `scripts/deploy_azure_appservice.sh`
+
 ## Limitations / disclaimer
 This project uses **synthetic data** for demonstration only. It is not a production safety system and should not be used as a sole basis for operational decisions without engineering review and validated utility data.
 
