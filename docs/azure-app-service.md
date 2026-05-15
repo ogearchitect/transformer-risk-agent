@@ -48,8 +48,10 @@ Set startup command so Streamlit binds to host `0.0.0.0` and platform port (`$PO
 az webapp config set \
   --name "$APP_NAME" \
   --resource-group "$RG" \
-  --startup-file "python -m streamlit run src/ui/app.py --server.address=0.0.0.0 --server.port \${PORT:-8000}"
+  --startup-file 'python -m streamlit run src/ui/app.py --server.address=0.0.0.0 --server.port ${PORT:-8000}'
 ```
+
+The single-quoted command preserves `${PORT:-8000}` so expansion occurs in App Service at runtime.
 
 Set required app settings:
 
