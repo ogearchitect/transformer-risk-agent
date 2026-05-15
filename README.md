@@ -74,6 +74,7 @@ streamlit run src/ui/app.py
 - **DGA**: Duval Triangle 1 + Rogers/Doernenburg ratios + IEEE C57.104 condition coding
 - **Health Index (0–100)**: weighted blend of DGA, PD, bushing, age, maintenance compliance
 - **Failure probability**: XGBoost classifier calibrated with Weibull survival estimates for 1/3/5/10 year horizons
+- **Reproducibility**: deterministic RNG (`seed=42`) with a fixed mid-year reference date for stable age/features
 - **Monetized risk**: `P(failure) × failure_consequence_usd`
 - **Fleet strategy**: budget-constrained replacement ranking + Monte Carlo spare recommendation
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from src.agents.llm import get_llm
@@ -22,8 +21,50 @@ class AgentResponse:
 
 
 def _extract_asset_id(text: str) -> str | None:
-    m = re.search(r"T-\d{4}", text.upper())
-    return m.group(0) if m else None
+    upper = text.upper()
+    for token in upper.replace(",", " ").split():
+        cleaned = token.strip(".!?;:")
+        if cleaned.startswith("T-") and len(cleaned) == 6 and cleaned[2:].isdigit():
+            return cleaned
+    return None
+
+
+def _extract_top_n(text: str, default: int = 5) -> int:
+    tokens = text.lower().replace(",", " ").split()
+    for i, token in enumerate(tokens[:-1]):
+        if token == "top" and tokens[i + 1].isdigit():
+            return int(tokens[i + 1])
+    return default
+
+
+def _extract_budget_musd(text: str, default: float = 15.0) -> float:
+    token = ""
+    seen_dollar = False
+    for ch in text:
+        if ch == "$":
+            seen_dollar = True
+            token = ""
+            continue
+        if seen_dollar and (ch.isdigit() or ch == "."):
+            token += ch
+        elif seen_dollar and token:
+            break
+    return float(token) if token else default
+
+
+def _extract_years(text: str, default: int = 5) -> int:
+    tokens = text.lower().replace("-", " ").replace(",", " ").split()
+    for i, token in enumerate(tokens):
+        if token.startswith("year") and i > 0 and tokens[i - 1].isdigit():
+            return int(tokens[i - 1])
+    return default
+
+
+def _extract_voltage(text: str, default: int = 230) -> int:
+    for candidate in (69, 138, 230, 345, 500):
+        if str(candidate) in text:
+            return candidate
+    return default
 
 
 def handle_query(message: str) -> AgentResponse:
@@ -33,23 +74,23 @@ def handle_query(message: str) -> AgentResponse:
 
     if "top" in q and "risk" in q:
         plan.append("Rank fleet by monetized risk")
-        n = int(re.search(r"top\s*(\d+)", q).group(1)) if re.search(r"top\s*(\d+)", q) else 5
+        n = _extract_top_n(q, default=5)
         result = rank_fleet.invoke({"top_n": n, "sort_by": "monetized_risk_usd"})
         calls.append({"tool": "rank_fleet", "args": {"top_n": n}, "result": result})
     elif "replacement" in q or "budget" in q:
         plan.append("Generate budget-constrained replacement plan")
-        b = float(re.search(r"\$(\d+(?:\.\d+)?)", q).group(1)) if re.search(r"\$(\d+(?:\.\d+)?)", q) else 15.0
+        b = _extract_budget_musd(q, default=15.0)
         result = recommend_replacement_plan.invoke({"budget_musd": b, "horizon_years": 5})
         calls.append({"tool": "recommend_replacement_plan", "args": {"budget_musd": b, "horizon_years": 5}, "result": result})
     elif "spare" in q:
         plan.append("Run Monte Carlo spare strategy")
-        kv = int(re.search(r"(69|138|230|345|500)", q).group(1)) if re.search(r"(69|138|230|345|500)", q) else 230
+        kv = _extract_voltage(q, default=230)
         result = recommend_spare_strategy.invoke({"voltage_class_kv": kv})
         calls.append({"tool": "recommend_spare_strategy", "args": {"voltage_class_kv": kv}, "result": result})
     elif "what-if" in q or "defer" in q:
         plan.append("Run scenario simulation")
         aid = _extract_asset_id(message) or "T-0001"
-        defer = int(re.search(r"(\d+)\s*year", q).group(1)) if re.search(r"(\d+)\s*year", q) else 2
+        defer = _extract_years(q, default=2)
         result = simulate_what_if.invoke({"id": aid, "loading_pct": 95, "defer_years": defer, "ambient_delta_c": 2})
         calls.append(
             {"tool": "simulate_what_if", "args": {"id": aid, "loading_pct": 95, "defer_years": defer, "ambient_delta_c": 2}, "result": result}
@@ -57,7 +98,7 @@ def handle_query(message: str) -> AgentResponse:
     elif "failure probability" in q or ("probability" in q and "t-" in q):
         plan.append("Get multi-horizon failure probability")
         aid = _extract_asset_id(message) or "T-0001"
-        horizon = int(re.search(r"(\d+)\s*year", q).group(1)) if re.search(r"(\d+)\s*year", q) else 5
+        horizon = min(10, max(1, _extract_years(q, default=5)))
         result = get_failure_probability.invoke({"id": aid, "horizon_years": horizon})
         calls.append({"tool": "get_failure_probability", "args": {"id": aid, "horizon_years": horizon}, "result": result})
     else:

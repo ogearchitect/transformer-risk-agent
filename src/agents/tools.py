@@ -6,6 +6,7 @@ import pandas as pd
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
+from src.config import REFERENCE_YEAR
 from src.data.loader import load_seed_data
 from src.models.dga_diagnostics import diagnose_latest
 from src.models.explain import build_narrative, top_risk_factors
@@ -66,7 +67,7 @@ def _asset_snapshot(asset_id: str) -> dict:
 
 def _health(asset_id: str) -> dict[str, float]:
     b = _asset_bundle(asset_id)
-    age = float(pd.Timestamp.now().year - _ctx()["transformers"].set_index("id").loc[asset_id]["vintage_year"])
+    age = float(REFERENCE_YEAR - _ctx()["transformers"].set_index("id").loc[asset_id]["vintage_year"])
     return compute_health_index(b["dga_history"], b["pd_history"], b["bushing_history"], b["maintenance_log"], age)
 
 

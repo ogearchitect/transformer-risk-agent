@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.config import SEED_DIR
+from src.config import REFERENCE_YEAR, SEED_DIR
 
 
 @dataclass(frozen=True)
@@ -27,7 +27,8 @@ def _clamp(a: np.ndarray, low: float, high: float) -> np.ndarray:
 def generate_fleet(seed: int = 42, n_assets: int = 500) -> FleetData:
     rng = np.random.default_rng(seed=seed)
     asset_ids = [f"T-{i:04d}" for i in range(1, n_assets + 1)]
-    today = pd.Timestamp(datetime.now(timezone.utc).date())
+    # Use a fixed mid-year anchor for stable age/seasonality features while avoiding year-boundary skew.
+    today = pd.Timestamp(datetime(REFERENCE_YEAR, 7, 1, tzinfo=timezone.utc).date())
     monthly = pd.date_range(end=today, periods=120, freq="MS")
     quarterly = pd.date_range(end=today, periods=40, freq="QS")
 

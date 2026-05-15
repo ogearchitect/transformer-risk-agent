@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.config import HORIZONS, MODEL_DIR, SEED_DIR
+from src.config import HORIZONS, MODEL_DIR, REFERENCE_YEAR
 from src.data.loader import load_seed_data
 from src.models.health_index import compute_health_index
 
@@ -71,13 +71,13 @@ def build_training_frame() -> pd.DataFrame:
             pd_hist[pd_hist["id"] == aid],
             bushing[bushing["id"] == aid],
             maintenance[maintenance["id"] == aid],
-            age_years=float(pd.Timestamp.now().year - row["vintage_year"]),
+            age_years=float(REFERENCE_YEAR - row["vintage_year"]),
         )
         op_last = latest_op.loc[aid]
         rows.append(
             {
                 "id": aid,
-                "age_years": float(pd.Timestamp.now().year - row["vintage_year"]),
+                "age_years": float(REFERENCE_YEAR - row["vintage_year"]),
                 "mva_rating": row["mva_rating"],
                 "voltage_class_kv": row["voltage_class_kv"],
                 "avg_loading_pct": op_last["avg_loading_pct"],

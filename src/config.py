@@ -13,5 +13,6 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+REFERENCE_YEAR = int(os.getenv("REFERENCE_YEAR", "2026"))
 
 HORIZONS = (1, 3, 5, 10)

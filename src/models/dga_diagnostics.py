@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import NamedTuple
 
 import numpy as np
 import pandas as pd
@@ -13,6 +14,12 @@ class DGADiagnosis:
     trend: str
     ieee_condition: str
     ratios: dict[str, float]
+
+
+class DuvalCoordinates(NamedTuple):
+    ch4_pct: float
+    c2h2_pct: float
+    c2h4_pct: float
 
 
 def _ratio(n: float, d: float) -> float:
@@ -94,6 +101,7 @@ def diagnose_latest(dga_asset_history: pd.DataFrame) -> DGADiagnosis:
     return DGADiagnosis(fault_type=fault, severity=severity, trend=trend, ieee_condition=condition, ratios=ratios)
 
 
-def duval_coordinates(ch4: float, c2h2: float, c2h4: float) -> tuple[float, float, float]:
+def duval_coordinates(ch4: float, c2h2: float, c2h4: float) -> DuvalCoordinates:
     total = max(ch4 + c2h2 + c2h4, 1e-9)
-    return tuple(100 * np.array([ch4, c2h2, c2h4]) / total)
+    vals = 100 * np.array([ch4, c2h2, c2h4]) / total
+    return DuvalCoordinates(float(vals[0]), float(vals[1]), float(vals[2]))
