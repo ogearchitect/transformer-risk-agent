@@ -43,7 +43,7 @@ echo "Configuring startup command and app settings..."
 az webapp config set \
   --name "$APP_NAME" \
   --resource-group "$RG" \
-  --startup-file 'python -m streamlit run src/ui/app.py --server.address=0.0.0.0 --server.port ${PORT:-8000}'
+  --startup-file "python -m streamlit run src/ui/app.py --server.address=0.0.0.0 --server.port \${PORT:-8000}"
 
 az webapp config appsettings set \
   --name "$APP_NAME" \
