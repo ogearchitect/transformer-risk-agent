@@ -1,8 +1,6 @@
 # Deploy Transformer Risk Agent to Azure App Service (Linux)
 
-This guide wires your Azure subscription and deploys the Streamlit app from:
-
-`/home/runner/work/transformer-risk-agent/transformer-risk-agent`
+This guide wires your Azure subscription and deploys the Streamlit app from your local repository root.
 
 ## 1) Connect Azure subscription
 
@@ -73,9 +71,7 @@ az webapp config appsettings set \
 
 ## 5) Deploy code from repo root
 
-Run this from:
-
-`/home/runner/work/transformer-risk-agent/transformer-risk-agent`
+Run this from your repository root (the directory containing `README.md` and `requirements.txt`).
 
 ```bash
 az webapp up \

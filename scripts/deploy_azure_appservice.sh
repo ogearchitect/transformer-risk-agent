@@ -6,7 +6,8 @@ if ! command -v az >/dev/null 2>&1; then
   exit 1
 fi
 
-REPO_ROOT="/home/runner/work/transformer-risk-agent/transformer-risk-agent"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 if [[ ! -d "$REPO_ROOT" ]]; then
   echo "Repo directory not found: $REPO_ROOT"
   exit 1
