@@ -12,6 +12,7 @@ langgraph>=0.2
 langchain>=0.3
 langchain-openai>=0.2
 langchain-core>=0.3
+azure-identity>=1.17
 python-dotenv>=1.0
 tenacity>=8.5
 rich>=13.7
