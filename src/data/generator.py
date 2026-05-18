@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from src.config import REFERENCE_YEAR, SEED_DIR
+from src.data.ot_ingest import generate_ot_data
 
 
 @dataclass(frozen=True)
@@ -18,6 +19,11 @@ class FleetData:
     bushing_history: pd.DataFrame
     maintenance_log: pd.DataFrame
     operational_history: pd.DataFrame
+    thermal_telemetry: pd.DataFrame
+    online_dga: pd.DataFrame
+    oltc_telemetry: pd.DataFrame
+    cooling_status: pd.DataFrame
+    fault_events: pd.DataFrame
 
 
 def _clamp(a: np.ndarray, low: float, high: float) -> np.ndarray:
@@ -202,6 +208,18 @@ def generate_fleet(seed: int = 42, n_assets: int = 500) -> FleetData:
     transformers["event_observed"] = fail_within_5y
     transformers["duration_years"] = duration_years.round(3)
 
+    operational_df = pd.DataFrame(operational_rows)
+    # Per-asset latent stress factor (normalised failure_score) — drives the
+    # label, AND propagates into OT signals so the OT features are predictive
+    # rather than independent noise. This mirrors real fleets where overloaded /
+    # degraded units exhibit the OT precursors and ALSO fail more.
+    fs_range = max(float(np.ptp(failure_score)), 1e-6)
+    stress = pd.Series(
+        np.clip((failure_score - failure_score.min()) / fs_range, 0.0, 1.0),
+        index=asset_ids,
+    )
+    ot = generate_ot_data(transformers, operational_df, source=None, stress_factor=stress)
+
     return FleetData(
         transformers=transformers,
         dga_history=pd.DataFrame(dga_rows),
@@ -209,6 +227,11 @@ def generate_fleet(seed: int = 42, n_assets: int = 500) -> FleetData:
         bushing_history=pd.DataFrame(bushing_rows),
         maintenance_log=pd.DataFrame(maintenance_rows),
         operational_history=pd.DataFrame(operational_rows),
+        thermal_telemetry=ot.thermal_telemetry,
+        online_dga=ot.online_dga,
+        oltc_telemetry=ot.oltc_telemetry,
+        cooling_status=ot.cooling_status,
+        fault_events=ot.fault_events,
     )
 
 
@@ -223,6 +246,11 @@ def save_seed_data(seed: int = 42, n_assets: int = 500, output_dir: Path | None 
     fleet.bushing_history.to_parquet(out / "bushing_history.parquet", index=False)
     fleet.maintenance_log.to_parquet(out / "maintenance_log.parquet", index=False)
     fleet.operational_history.to_parquet(out / "operational_history.parquet", index=False)
+    fleet.thermal_telemetry.to_parquet(out / "thermal_telemetry.parquet", index=False)
+    fleet.online_dga.to_parquet(out / "online_dga.parquet", index=False)
+    fleet.oltc_telemetry.to_parquet(out / "oltc_telemetry.parquet", index=False)
+    fleet.cooling_status.to_parquet(out / "cooling_status.parquet", index=False)
+    fleet.fault_events.to_parquet(out / "fault_events.parquet", index=False)
     return fleet
 
 
