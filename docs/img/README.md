@@ -9,3 +9,4 @@ This folder holds the images referenced by the top-level `README.md`. Capture th
 | `agent-chat.gif` | Sidebar chat panel from `src/ui/chat_panel.py` | Short clip of asking "Show me the top 5 highest-risk transformers and why" |
 
 PNGs should be about 1600px wide; GIFs should stay at or below 5 MB.
+All screenshots should reflect the dark theme introduced in the dashboard overhaul.
