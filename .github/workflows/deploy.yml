@@ -1,0 +1,71 @@
+# One-time Azure OIDC setup:
+# 1) Create an Entra ID app registration for GitHub Actions.
+# 2) Add federated credentials for both subjects:
+#    - repo:ogearchitect/transformer-risk-agent:ref:refs/heads/main
+#    - repo:ogearchitect/transformer-risk-agent:environment:production
+# 3) Assign the app the Contributor role on the target resource group (or subscription).
+# 4) Add GitHub secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID.
+# Docs: https://learn.microsoft.com/azure/developer/github/connect-from-azure-openid-connect
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: Azure resource group
+        required: true
+        default: rg-transformer-risk-agent
+      location:
+        description: Azure region
+        required: true
+        default: eastus
+      app_name:
+        description: Container App name
+        required: true
+        default: transformer-risk-agent
+      environment_name:
+        description: Container Apps environment name
+        required: true
+        default: cae-transformer-risk-agent
+
+permissions:
+  id-token: write   # required for OIDC
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install containerapp extension
+        run: az extension add -n containerapp --upgrade -y
+
+      - name: Deploy to Azure Container Apps
+        env:
+          RESOURCE_GROUP: ${{ inputs.resource_group }}
+          LOCATION: ${{ inputs.location }}
+          APP_NAME: ${{ inputs.app_name }}
+          ENV_NAME: ${{ inputs.environment_name }}
+        run: bash scripts/deploy_azure.sh
+
+      - name: Write deployment summary
+        env:
+          RESOURCE_GROUP: ${{ inputs.resource_group }}
+          APP_NAME: ${{ inputs.app_name }}
+        run: |
+          FQDN=$(az containerapp show \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          echo "### Deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "- App URL: [https://$FQDN](https://$FQDN)" >> "$GITHUB_STEP_SUMMARY"
