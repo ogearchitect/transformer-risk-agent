@@ -2,6 +2,8 @@
 
 **Agentic AI for transformer asset health, failure-risk prediction, and fleet strategy optimization.**
 
+[![CI](https://github.com/ogearchitect/transformer-risk-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ogearchitect/transformer-risk-agent/actions/workflows/ci.yml) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A polished demo application that simulates a utility transformer fleet, predicts multi-horizon failure risk (1/3/5/10 years), and exposes decisions through an interactive multi-agent chat experience.
 
 > Ideal for utility customer demos, innovation showcases, and portfolio projects.
