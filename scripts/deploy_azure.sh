@@ -75,6 +75,14 @@ FOUNDRY_SCOPE=$(az cognitiveservices account show -n "$FOUNDRY_ACCOUNT" -g "$RES
 AZURE_OPENAI_DEPLOYMENT="${AZURE_OPENAI_DEPLOYMENT:-gpt-4.1-mini}"
 AZURE_OPENAI_API_VERSION="${AZURE_OPENAI_API_VERSION:-2025-01-01-preview}"
 
+echo "==> Provisioning Azure Digital Twins (idempotent)..."
+ADT_ENDPOINT=""
+ADT_NAME="${ADT_NAME:-adt-transformer-risk-agent}"
+if bash "$REPO_ROOT/scripts/provision_adt.sh"; then
+  ADT_ENDPOINT=$(az dt show -n "$ADT_NAME" -g "$RESOURCE_GROUP" --query hostName -o tsv 2>/dev/null || echo "")
+fi
+ADT_MODEL_ID="${ADT_MODEL_ID:-dtmi:tra:Transformer;1}"
+
 echo "==> Ensuring Azure Container Registry..."
 ACR_NAME=$(az acr list -g "$RESOURCE_GROUP" --query "[0].name" -o tsv)
 if [ -z "$ACR_NAME" ]; then
@@ -112,6 +120,8 @@ if az containerapp show -n "$APP_NAME" -g "$RESOURCE_GROUP" >/dev/null 2>&1; the
       "AZURE_OPENAI_ENDPOINT=$AZURE_OPENAI_ENDPOINT" \
       "AZURE_OPENAI_DEPLOYMENT=$AZURE_OPENAI_DEPLOYMENT" \
       "AZURE_OPENAI_API_VERSION=$AZURE_OPENAI_API_VERSION" \
+      "ADT_ENDPOINT=$ADT_ENDPOINT" \
+      "ADT_MODEL_ID=$ADT_MODEL_ID" \
     -o none
 else
   echo "==> Creating container app..."
@@ -130,6 +140,8 @@ else
       "AZURE_OPENAI_ENDPOINT=$AZURE_OPENAI_ENDPOINT" \
       "AZURE_OPENAI_DEPLOYMENT=$AZURE_OPENAI_DEPLOYMENT" \
       "AZURE_OPENAI_API_VERSION=$AZURE_OPENAI_API_VERSION" \
+      "ADT_ENDPOINT=$ADT_ENDPOINT" \
+      "ADT_MODEL_ID=$ADT_MODEL_ID" \
     -o none
 fi
 
@@ -149,6 +161,19 @@ az role assignment create \
   --role "Cognitive Services User" \
   --scope "$FOUNDRY_SCOPE" \
   -o none 2>&1 | grep -v "already exists" || true
+
+if [ -n "$ADT_ENDPOINT" ]; then
+  ADT_ID=$(az dt show -n "$ADT_NAME" -g "$RESOURCE_GROUP" --query id -o tsv 2>/dev/null || echo "")
+  if [ -n "$ADT_ID" ]; then
+    echo "==> Granting app MSI 'Azure Digital Twins Data Owner' on $ADT_NAME..."
+    az role assignment create \
+      --assignee-object-id "$APP_PRINCIPAL_ID" \
+      --assignee-principal-type ServicePrincipal \
+      --role "Azure Digital Twins Data Owner" \
+      --scope "$ADT_ID" \
+      -o none 2>&1 | grep -v "already exists" || true
+  fi
+fi
 
 echo "==> Restarting active revision to pick up the identity..."
 ACTIVE_REV=$(az containerapp revision list --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query "[?properties.active].name | [0]" -o tsv)

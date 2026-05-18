@@ -9,6 +9,7 @@ from src.agents.tools import (
     rank_fleet,
     recommend_replacement_plan,
     recommend_spare_strategy,
+    simulate_twin_scenario,
     simulate_what_if,
 )
 
@@ -77,6 +78,21 @@ def handle_query(message: str) -> AgentResponse:
         n = _extract_top_n(q, default=5)
         result = rank_fleet.invoke({"top_n": n, "sort_by": "monetized_risk_usd"})
         calls.append({"tool": "rank_fleet", "args": {"top_n": n}, "result": result})
+    elif any(k in q for k in ("twin", "heat wave", "heat-wave", "contingency", "simulate", "scenario")):
+        plan.append("Run physics digital-twin scenario")
+        aid = _extract_asset_id(message) or "T-0001"
+        scenario = "heat_wave"
+        if "summer" in q or "peak" in q:
+            scenario = "summer_peak"
+        elif "contingency" in q or "transfer" in q:
+            scenario = "contingency_transfer"
+        elif "cooling" in q and "loss" in q:
+            scenario = "cooling_loss"
+        elif "normal" in q:
+            scenario = "normal_day"
+        sync = "azure" in q or "adt" in q or "mirror" in q
+        result = simulate_twin_scenario.invoke({"id": aid, "scenario": scenario, "repeat_days": 1, "sync_to_adt": sync})
+        calls.append({"tool": "simulate_twin_scenario", "args": {"id": aid, "scenario": scenario, "sync_to_adt": sync}, "result": result})
     elif "replacement" in q or "budget" in q:
         plan.append("Generate budget-constrained replacement plan")
         b = _extract_budget_musd(q, default=15.0)

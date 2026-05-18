@@ -107,6 +107,26 @@ def _render_ot_section(asset_id: str, data: Mapping[str, pd.DataFrame]) -> None:
     )
 
     try:
+        from src.twin import TransformerTwin
+        from src.twin.calibration import calibrate_thermal_twin
+
+        calib = calibrate_thermal_twin(asset_id)
+        twin = TransformerTwin.from_asset_id(asset_id)
+        twin_state = twin.run("normal_day")
+        rmse_str = f"±{calib.rmse_c:.1f} °C" if calib.samples > 0 and calib.rmse_c == calib.rmse_c else "n/a"
+        aging_str = f"{twin_state.aging_hours_equivalent * 365.0:.0f} h / yr"
+        rul_str = f"{twin_state.rul_years_with_scenario:.1f} y"
+        metric_row(
+            [
+                ("Twin calibration RMSE", rmse_str, f"{calib.samples} OT samples"),
+                ("Twin: projected aging / yr", aging_str, "Normal-day scenario × 365"),
+                ("Twin: RUL projection", rul_str, "Run page 5 for scenarios"),
+            ]
+        )
+    except Exception:
+        pass
+
+    try:
         lift = _ot_lift_predictions(asset_id)
         delta = lift["ot_p5"] - lift["baseline_p5"]
         msg = (

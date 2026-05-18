@@ -1,0 +1,104 @@
+{
+  "@context": "dtmi:dtdl:context;3",
+  "@id": "dtmi:tra:Transformer;1",
+  "@type": "Interface",
+  "displayName": "Transformer (Digital Twin)",
+  "description": "Physics digital-twin representation of an oil-filled power transformer, mirrored from the Transformer Risk Agent app.",
+  "contents": [
+    {
+      "@type": "Property",
+      "name": "assetId",
+      "schema": "string",
+      "writable": false
+    },
+    {
+      "@type": "Property",
+      "name": "voltageClassKv",
+      "schema": "integer"
+    },
+    {
+      "@type": "Property",
+      "name": "mvaRating",
+      "schema": "double"
+    },
+    {
+      "@type": "Property",
+      "name": "installYear",
+      "schema": "integer"
+    },
+    {
+      "@type": "Property",
+      "name": "coolingType",
+      "schema": "string"
+    },
+    {
+      "@type": "Property",
+      "name": "healthIndex",
+      "schema": "double"
+    },
+    {
+      "@type": "Property",
+      "name": "hotspotC",
+      "schema": "double",
+      "description": "Latest projected peak hotspot temperature, °C"
+    },
+    {
+      "@type": "Property",
+      "name": "topOilC",
+      "schema": "double"
+    },
+    {
+      "@type": "Property",
+      "name": "rulYears",
+      "schema": "double",
+      "description": "Projected remaining useful life under current scenario, years"
+    },
+    {
+      "@type": "Property",
+      "name": "agingPerUnitLife",
+      "schema": "double",
+      "description": "Estimated per-unit insulation life consumed to date"
+    },
+    {
+      "@type": "Property",
+      "name": "lastCalibrationRmseC",
+      "schema": "double"
+    },
+    {
+      "@type": "Property",
+      "name": "lastScenarioName",
+      "schema": "string"
+    },
+    {
+      "@type": "Property",
+      "name": "projectedPFailure5y",
+      "schema": "double"
+    },
+    {
+      "@type": "Property",
+      "name": "lastUpdated",
+      "schema": "dateTime"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "h2Ppm",
+      "schema": "double"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "ch4Ppm",
+      "schema": "double"
+    },
+    {
+      "@type": "Telemetry",
+      "name": "c2h4Ppm",
+      "schema": "double"
+    },
+    {
+      "@type": "Relationship",
+      "name": "feedsSubstation",
+      "target": "dtmi:tra:Substation;1",
+      "maxMultiplicity": 1
+    }
+  ]
+}

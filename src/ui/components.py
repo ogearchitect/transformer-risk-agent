@@ -146,7 +146,7 @@ def metric_row(metrics: list[tuple[str, str, str]]) -> None:
         return
 
     cols = st.columns(len(metrics))
-    for col, item in zip(cols, metrics):
+    for idx, (col, item) in enumerate(zip(cols, metrics)):
         label, value, delta = item[:3]
         sparkline = item[3] if len(item) > 3 else _sparkline_series(value, delta)
         tone = "negative" if delta.strip().startswith("-") else "positive" if delta.strip().startswith("+") else "neutral"
@@ -162,10 +162,12 @@ def metric_row(metrics: list[tuple[str, str, str]]) -> None:
                 unsafe_allow_html=True,
             )
             if sparkline:
+                slug = "".join(ch.lower() if ch.isalnum() else "_" for ch in label)[:32]
                 st.plotly_chart(
                     _sparkline_figure(sparkline, delta),
                     use_container_width=True,
                     config={"displayModeBar": False, "staticPlot": True},
+                    key=f"kpi_spark_{slug}_{idx}_{abs(hash((label, value, delta))) % 10_000_000}",
                 )
 
 

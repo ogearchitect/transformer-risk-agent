@@ -45,6 +45,16 @@ class SpareInput(BaseModel):
     voltage_class_kv: int
 
 
+class TwinScenarioInput(BaseModel):
+    id: str = Field(..., description="Transformer asset id like T-0042")
+    scenario: str = Field(
+        default="heat_wave",
+        description="One of: normal_day, summer_peak, heat_wave, contingency_transfer, cooling_loss",
+    )
+    repeat_days: int = Field(default=1, ge=1, le=14, description="Tile the scenario over this many days")
+    sync_to_adt: bool = Field(default=False, description="Mirror result to Azure Digital Twins")
+
+
 @lru_cache(maxsize=1)
 def _ctx() -> dict[str, pd.DataFrame]:
     return load_seed_data()
@@ -204,6 +214,65 @@ def explain_transformer_risk(id: str) -> dict:
     return {"id": id, "narrative": build_narrative(id, p5, health, factors), "top_factors": factors, "confidence": 0.82}
 
 
+@tool(args_schema=TwinScenarioInput)
+def simulate_twin_scenario(id: str, scenario: str = "heat_wave", repeat_days: int = 1, sync_to_adt: bool = False) -> dict:
+    """Run a physics digital-twin scenario for one transformer.
+
+    Integrates the IEEE C57.91 thermal ODE under the chosen scenario, then
+    computes per-unit insulation life consumed, projected RUL, gas evolution,
+    and the resulting 5-year failure-probability shift. Optionally mirrors
+    the resulting twin state to Azure Digital Twins.
+    """
+    from datetime import datetime, timezone
+
+    from src.twin import TransformerTwin, build_scenario
+    from src.twin.adt_sync import adt_mirror
+
+    scenario_obj = build_scenario(scenario, repeat_days=repeat_days)
+    twin = TransformerTwin.from_asset_id(id)
+    state = twin.run(scenario_obj)
+    summary = state.to_summary_dict()
+    adt_payload = {
+        "skipped": True,
+        "reason": "sync_to_adt=False",
+    }
+    if sync_to_adt:
+        mirror = adt_mirror()
+        payload = {
+            "assetId": id,
+            "voltageClassKv": int(twin.asset_row.get("voltage_class_kv", 0)),
+            "mvaRating": float(twin.asset_row.get("mva_rating", 0.0)),
+            "installYear": int(twin.asset_row.get("vintage_year", 0)),
+            "coolingType": str(twin.asset_row.get("cooling_type", "ONAF")),
+            "healthIndex": summary["health_index"],
+            "hotspotC": summary["peak_hotspot_c"],
+            "topOilC": summary["peak_top_oil_c"],
+            "rulYears": summary["rul_years_with_scenario"],
+            "agingPerUnitLife": summary["per_unit_life_consumed_event"],
+            "lastCalibrationRmseC": summary["calibration_rmse_c"] or 0.0,
+            "lastScenarioName": summary["scenario_name"],
+            "projectedPFailure5y": summary["projected_p_failure_5y"],
+            "lastUpdated": datetime.now(timezone.utc).isoformat(),
+        }
+        adt_payload = mirror.upsert_twin(
+            id,
+            payload,
+            telemetry={
+                "h2Ppm": summary["gas_h2_ppm"],
+                "ch4Ppm": summary["gas_ch4_ppm"],
+                "c2h4Ppm": summary["gas_c2h4_ppm"],
+            },
+        )
+        adt_payload["enabled"] = mirror.enabled
+    return {
+        "id": id,
+        "scenario": scenario,
+        "repeat_days": repeat_days,
+        **summary,
+        "adt_sync": adt_payload,
+    }
+
+
 ALL_TOOLS = [
     get_transformer,
     get_dga_diagnosis,
@@ -215,4 +284,5 @@ ALL_TOOLS = [
     recommend_replacement_plan,
     recommend_spare_strategy,
     explain_transformer_risk,
+    simulate_twin_scenario,
 ]
