@@ -18,6 +18,21 @@ ADT_NAME="${ADT_NAME:-adt-transformer-risk-agent}"
 APP_NAME="${APP_NAME:-transformer-risk-agent}"
 MODEL_FILE="${MODEL_FILE:-dtdl/Transformer.v1.json}"
 
+# ADT is not available in every region. Fall back to a nearby supported region
+# when LOCATION is unsupported. Override with ADT_LOCATION if you want to pin.
+ADT_SUPPORTED_REGIONS="westcentralus westus2 northeurope australiaeast westeurope eastus southcentralus southeastasia uksouth eastus2 westus3 japaneast koreacentral qatarcentral"
+if [ -z "${ADT_LOCATION:-}" ]; then
+  if [[ " $ADT_SUPPORTED_REGIONS " == *" $LOCATION "* ]]; then
+    ADT_LOCATION="$LOCATION"
+  else
+    case "$LOCATION" in
+      sweden*|norway*|switzerland*|france*|germany*|uk*|polan*) ADT_LOCATION="westeurope" ;;
+      *) ADT_LOCATION="westeurope" ;;
+    esac
+    echo "    ⚠  ADT not available in '$LOCATION'; placing instance in '$ADT_LOCATION' (cross-region, REST endpoint)."
+  fi
+fi
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
@@ -35,9 +50,9 @@ if ! az dt --help >/dev/null 2>&1; then
   az extension add -n dt -y -o none
 fi
 
-echo "==> Ensuring ADT instance $ADT_NAME..."
+echo "==> Ensuring ADT instance $ADT_NAME in $ADT_LOCATION..."
 if ! az dt show -n "$ADT_NAME" -g "$RESOURCE_GROUP" >/dev/null 2>&1; then
-  az dt create -n "$ADT_NAME" -g "$RESOURCE_GROUP" -l "$LOCATION" -o none
+  az dt create -n "$ADT_NAME" -g "$RESOURCE_GROUP" -l "$ADT_LOCATION" -o none
 fi
 
 ADT_HOSTNAME=$(az dt show -n "$ADT_NAME" -g "$RESOURCE_GROUP" --query hostName -o tsv)
@@ -57,7 +72,12 @@ if [ -n "$CALLER_OBJECT_ID" ]; then
 fi
 
 echo "==> Uploading DTDL model from $MODEL_FILE..."
-MODEL_ID=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["@id"])' "$MODEL_FILE")
+PY=$(command -v python3 || command -v python || true)
+if [ -z "$PY" ]; then
+  MODEL_ID=$(grep -o '"@id"[^"]*"[^"]*"' "$MODEL_FILE" | head -1 | sed -E 's/.*"@id"[^"]*"([^"]+)"/\1/')
+else
+  MODEL_ID=$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1]))["@id"])' "$MODEL_FILE")
+fi
 if az dt model show -n "$ADT_NAME" --dtmi "$MODEL_ID" >/dev/null 2>&1; then
   echo "    model $MODEL_ID already present"
 else
