@@ -42,10 +42,12 @@ def _sync_controls_from_state(state: ScenarioState, *, force: bool = False) -> N
 
 
 def _apply_state(state: ScenarioState) -> None:
+    """Update scenario state and slider defaults.
+
+    Must be called BEFORE the slider widgets render — never write to widget-owned
+    keys (scenario_asset_picker, scenario_loading_pct, ...) after the widgets exist.
+    """
     st.session_state.scenario_state = state
-    asset_id = state.get("asset_id")
-    if asset_id:
-        st.session_state["scenario_asset_picker"] = asset_id
     _sync_controls_from_state(state, force=True)
 
 
@@ -101,9 +103,14 @@ def _curve_chart(state: ScenarioState) -> go.Figure | None:
 
 
 def _run_turn(user_msg: str) -> None:
-    with st.spinner("Running scenario…"):
-        next_state, _ = run_scenario_turn(st.session_state.scenario_state, user_msg)
-    _apply_state(next_state)
+    try:
+        with st.spinner("Running scenario…"):
+            next_state, _ = run_scenario_turn(st.session_state.scenario_state, user_msg)
+    except Exception as exc:  # noqa: BLE001
+        st.session_state["scenario_last_error"] = f"{type(exc).__name__}: {exc}"
+        return
+    st.session_state.scenario_state = next_state
+    st.session_state.pop("scenario_last_error", None)
     st.rerun()
 
 
@@ -185,12 +192,15 @@ def main() -> None:
                 prompt = f"Simulate {selected_asset} at {loading}% loading deferred {defer} years with ambient {ambient:+}C"
                 _run_turn(prompt)
             if st.button("♻ Reset", use_container_width=True):
-                _apply_state(new_state(selected_asset))
+                st.session_state.pop("scenario_state", None)
+                st.session_state.pop("scenario_last_error", None)
                 st.rerun()
 
     state: ScenarioState = st.session_state.scenario_state
 
     with right_col:
+        if err := st.session_state.get("scenario_last_error"):
+            st.error(f"Scenario run failed: {err}")
         _render_results(state)
         st.markdown("### Scenario conversation")
         if state.get("history"):

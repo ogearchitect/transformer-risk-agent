@@ -90,11 +90,9 @@ def render_chat_panel() -> None:
             st.session_state.messages = []
 
         st.caption("Try a demo prompt")
-        prompt_cols = st.columns(len(EXAMPLE_PROMPTS))
-        for col, prompt in zip(prompt_cols, EXAMPLE_PROMPTS):
-            with col:
-                if st.button(prompt, key=f"chip-{prompt}", use_container_width=True):
-                    st.session_state["_queued_prompt"] = prompt
+        for prompt in EXAMPLE_PROMPTS:
+            if st.button(prompt, key=f"chip-{prompt}", use_container_width=True):
+                st.session_state["_queued_prompt"] = prompt
 
         for message in st.session_state.messages[-8:]:
             if message["role"] == "assistant":
