@@ -215,6 +215,62 @@ def _render_ot_section(asset_id: str, data: Mapping[str, pd.DataFrame]) -> None:
             )
             st.plotly_chart(fig, use_container_width=True)
 
+    _render_weather_widget(asset_id)
+
+
+def _render_weather_widget(asset_id: str) -> None:
+    from src.data.weather import forecast_for_asset, heat_risk_summary
+
+    st.markdown("### 🌦️ 7-day weather forecast")
+    try:
+        fc = forecast_for_asset(asset_id)
+    except Exception as exc:
+        st.info(f"Weather feed unavailable: {exc}")
+        return
+
+    risk = heat_risk_summary(fc)
+    peak = risk.get("peak_temp_c", float("nan"))
+    hot_days = int(risk.get("hot_days", 0))
+    source_label = "Open-Meteo (live)" if fc.source == "open-meteo" else "Offline fallback"
+    sub = f"{fc.location_name} · {fc.latitude:.2f}, {fc.longitude:.2f} · {source_label}"
+    st.caption(sub)
+
+    if isinstance(peak, float) and peak == peak:
+        if peak >= 38:
+            st.error(risk["alert"], icon="🔥")
+        elif peak >= risk.get("heat_threshold_c", 32.0):
+            st.warning(risk["alert"], icon="🌡️")
+        else:
+            st.info(risk["alert"], icon="✅")
+
+    df = fc.as_dataframe()
+    chart_col, table_col = st.columns([3, 2])
+    with chart_col:
+        fig = go.Figure()
+        fig.add_scatter(
+            x=df["date"], y=df["temperature_max_c"], name="Daily high °C",
+            mode="lines+markers", line={"color": "#f97316", "width": 2.5}, fill="tozeroy",
+            fillcolor="rgba(249,115,22,0.10)",
+        )
+        fig.add_scatter(
+            x=df["date"], y=df["temperature_min_c"], name="Daily low °C",
+            mode="lines+markers", line={"color": "#38bdf8", "width": 2, "dash": "dot"},
+        )
+        fig.add_hline(y=risk.get("heat_threshold_c", 32.0), line={"color": "#f87171", "dash": "dash"},
+                      annotation_text=f"{risk.get('heat_threshold_c', 32.0):.0f} °C threshold")
+        fig.update_layout(
+            template=PLOTLY_TEMPLATE, height=260,
+            title=f"Ambient outlook — peak {peak:.1f} °C · {hot_days} hot day(s)",
+            margin={"l": 0, "r": 0, "t": 50, "b": 0},
+            yaxis_title="°C", legend={"orientation": "h", "y": -0.2},
+        )
+        st.plotly_chart(fig, use_container_width=True, key=f"weather_chart_{asset_id}")
+
+    with table_col:
+        compact = df[["date", "temperature_max_c", "temperature_min_c", "humidity_max_pct", "description"]].copy()
+        compact.columns = ["Date", "High °C", "Low °C", "Humidity %", "Conditions"]
+        st.dataframe(compact, use_container_width=True, hide_index=True)
+
 
 def main() -> None:
     inject_global_styles()

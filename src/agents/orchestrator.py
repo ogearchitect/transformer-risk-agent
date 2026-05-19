@@ -6,6 +6,7 @@ from src.agents.llm import get_llm
 from src.agents.tools import (
     explain_transformer_risk,
     get_failure_probability,
+    get_weather_forecast,
     rank_fleet,
     recommend_replacement_plan,
     recommend_spare_strategy,
@@ -78,6 +79,11 @@ def handle_query(message: str) -> AgentResponse:
         n = _extract_top_n(q, default=5)
         result = rank_fleet.invoke({"top_n": n, "sort_by": "monetized_risk_usd"})
         calls.append({"tool": "rank_fleet", "args": {"top_n": n}, "result": result})
+    elif any(k in q for k in ("weather", "forecast", "ambient outlook", "temperature outlook")):
+        plan.append("Fetch 7-day weather forecast for asset region")
+        aid = _extract_asset_id(message) or "T-0001"
+        result = get_weather_forecast.invoke({"id": aid, "heat_threshold_c": 32.0})
+        calls.append({"tool": "get_weather_forecast", "args": {"id": aid}, "result": result})
     elif any(k in q for k in ("twin", "heat wave", "heat-wave", "contingency", "simulate", "scenario")):
         plan.append("Run physics digital-twin scenario")
         aid = _extract_asset_id(message) or "T-0001"

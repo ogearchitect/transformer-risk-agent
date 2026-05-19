@@ -273,6 +273,36 @@ def simulate_twin_scenario(id: str, scenario: str = "heat_wave", repeat_days: in
     }
 
 
+class WeatherInput(BaseModel):
+    id: str = Field(..., description="Transformer asset id like T-0042")
+    heat_threshold_c: float = Field(default=32.0, ge=20.0, le=45.0)
+
+
+@tool(args_schema=WeatherInput)
+def get_weather_forecast(id: str, heat_threshold_c: float = 32.0) -> dict:
+    """Return the 7-day daily weather forecast for the transformer's region.
+
+    Uses Open-Meteo (no API key) with a deterministic offline fallback. Returns
+    coordinates, location label, source ('open-meteo' or 'offline-fallback'),
+    7-day daily series (tmax/tmin/humidity/wind/weather_code/description), and
+    a heat-risk summary (peak temp, hot-day count, advisory string). Use this
+    to assess weather-driven thermal stress on the asset over the next week.
+    """
+    from src.data.weather import forecast_for_asset, heat_risk_summary
+
+    fc = forecast_for_asset(id)
+    return {
+        "id": id,
+        "region": fc.region,
+        "location": fc.location_name,
+        "latitude": fc.latitude,
+        "longitude": fc.longitude,
+        "source": fc.source,
+        "days": [d.__dict__ for d in fc.days],
+        "heat_risk": heat_risk_summary(fc, heat_threshold_c=heat_threshold_c),
+    }
+
+
 ALL_TOOLS = [
     get_transformer,
     get_dga_diagnosis,
@@ -285,4 +315,5 @@ ALL_TOOLS = [
     recommend_spare_strategy,
     explain_transformer_risk,
     simulate_twin_scenario,
+    get_weather_forecast,
 ]
