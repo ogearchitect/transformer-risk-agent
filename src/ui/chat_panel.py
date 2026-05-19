@@ -108,12 +108,24 @@ def render_chat_panel() -> None:
             with st.chat_message("user", avatar=USER_AVATAR):
                 st.markdown(user_msg)
             with st.spinner("Thinking..."):
-                resp = handle_query(user_msg)
+                try:
+                    resp = handle_query(user_msg)
+                    answer = resp.answer
+                    plan = resp.plan
+                    tool_calls = resp.tool_calls
+                except Exception as exc:
+                    answer = (
+                        f"⚠️ I hit an unexpected error handling that question.\n\n"
+                        f"`{type(exc).__name__}: {str(exc)[:240]}`\n\n"
+                        "The dashboards above still reflect live data — try a simpler prompt "
+                        "(e.g. \"Top 5 risk\") while we investigate."
+                    )
+                    plan, tool_calls = [], []
             assistant_message = {
                 "role": "assistant",
-                "content": resp.answer,
-                "plan": resp.plan,
-                "tool_calls": resp.tool_calls,
+                "content": answer,
+                "plan": plan,
+                "tool_calls": tool_calls,
             }
             st.session_state.messages.append(assistant_message)
             _render_assistant_message(assistant_message)

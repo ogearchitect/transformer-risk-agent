@@ -121,6 +121,8 @@ def get_llm() -> BaseChatModel:
             "azure_deployment": AZURE_OPENAI_DEPLOYMENT,
             "api_version": AZURE_OPENAI_API_VERSION,
             "temperature": 0.1,
+            "timeout": 25.0,
+            "max_retries": 1,
         }
         if AZURE_OPENAI_API_KEY:
             return _wrap(AzureChatOpenAI(api_key=AZURE_OPENAI_API_KEY, **kwargs))
@@ -130,7 +132,7 @@ def get_llm() -> BaseChatModel:
             return _wrap(AzureChatOpenAI(azure_ad_token_provider=token_provider, **kwargs))
         return MockChatModel()
     if OPENAI_API_KEY:
-        kwargs = {"model": OPENAI_MODEL, "api_key": OPENAI_API_KEY, "temperature": 0.1}
+        kwargs = {"model": OPENAI_MODEL, "api_key": OPENAI_API_KEY, "temperature": 0.1, "timeout": 25.0, "max_retries": 1}
         if OPENAI_BASE_URL:
             kwargs["base_url"] = OPENAI_BASE_URL
         return _wrap(ChatOpenAI(**kwargs))

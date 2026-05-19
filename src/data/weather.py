@@ -26,7 +26,7 @@ DEFAULT_REGION_COORDINATE = (39.8283, -98.5795, "Lebanon, KS")
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 WEATHER_CACHE_TTL_S = int(os.getenv("WEATHER_CACHE_TTL_S", "3600"))
-WEATHER_TIMEOUT_S = float(os.getenv("WEATHER_TIMEOUT_S", "6.0"))
+WEATHER_TIMEOUT_S = float(os.getenv("WEATHER_TIMEOUT_S", "4.0"))
 
 WMO_CODE_DESCRIPTIONS: dict[int, str] = {
     0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",

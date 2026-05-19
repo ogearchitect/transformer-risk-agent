@@ -130,7 +130,16 @@ def handle_query(message: str) -> AgentResponse:
         calls.append({"tool": "explain_transformer_risk", "args": {"id": aid}, "result": explain_transformer_risk.invoke({"id": aid})})
 
     tool_context = "\n".join([f"- {c['tool']}: {str(c['result'])[:900]}" for c in calls])
-    llm = get_llm()
-    answer = llm.invoke(message, tool_context=tool_context).content
+    try:
+        llm = get_llm()
+        answer = llm.invoke(message, tool_context=tool_context).content
+    except Exception as exc:
+        llm_name = type(get_llm()).__name__ if False else "LLM"
+        answer = (
+            f"⚠️ The {llm_name} backend is temporarily unavailable ({type(exc).__name__}: {str(exc)[:160]}).\n\n"
+            "Falling back to a deterministic, tool-grounded summary so you can keep working:\n\n"
+            f"{tool_context}\n\n"
+            "Try again in a few seconds — the agent retries automatically on the next message."
+        )
 
     return AgentResponse(plan=plan, tool_calls=calls, answer=answer)

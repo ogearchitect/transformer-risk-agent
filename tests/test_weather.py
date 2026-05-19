@@ -163,3 +163,17 @@ def test_orchestrator_heat_wave_still_routes_to_twin(monkeypatch: pytest.MonkeyP
     tools = [c["tool"] for c in response.tool_calls]
     assert "simulate_twin_scenario" in tools
     assert "get_weather_forecast" not in tools
+
+
+def test_orchestrator_survives_llm_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """If the LLM backend throws, handle_query must still return a usable answer."""
+    from src.agents import orchestrator as orch
+
+    class _BoomLLM:
+        def invoke(self, *args, **kwargs):
+            raise RuntimeError("simulated AOAI rate limit")
+
+    monkeypatch.setattr(orch, "get_llm", lambda: _BoomLLM())
+    resp = orch.handle_query("Top 3 risk")
+    assert resp.tool_calls, "tools should still have run before LLM was called"
+    assert "unavailable" in resp.answer.lower() or "deterministic" in resp.answer.lower()
