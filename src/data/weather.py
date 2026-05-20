@@ -13,16 +13,11 @@ from typing import Any
 
 import pandas as pd
 
-from src.data.loader import load_seed_data
-
-REGION_COORDINATES: dict[str, tuple[float, float, str]] = {
-    "North":   (44.9778, -93.2650, "Minneapolis, MN"),
-    "South":   (29.7604, -95.3698, "Houston, TX"),
-    "East":    (42.3601, -71.0589, "Boston, MA"),
-    "West":    (38.5816, -121.4944, "Sacramento, CA"),
-    "Central": (39.0997, -94.5786, "Kansas City, MO"),
-}
-DEFAULT_REGION_COORDINATE = (39.8283, -98.5795, "Lebanon, KS")
+from src.data.locations import (
+    DEFAULT_REGION_COORDINATE,
+    REGION_COORDINATES,
+    coordinates_for_asset,
+)
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 WEATHER_CACHE_TTL_S = int(os.getenv("WEATHER_CACHE_TTL_S", "3600"))
@@ -70,24 +65,6 @@ _CACHE: dict[tuple[float, float], tuple[float, WeatherForecast]] = {}
 
 def reset_weather_cache_for_tests() -> None:
     _CACHE.clear()
-
-
-def _substation_jitter(substation: str) -> tuple[float, float]:
-    h = abs(hash(substation))
-    return (((h % 113) - 56) / 1000.0, (((h // 113) % 113) - 56) / 1000.0)
-
-
-def coordinates_for_asset(asset_id: str) -> tuple[float, float, str, str]:
-    df = load_seed_data()["transformers"]
-    row = df[df["id"] == asset_id]
-    if row.empty:
-        lat, lon, name = DEFAULT_REGION_COORDINATE
-        return lat, lon, name, "Unknown"
-    region = str(row.iloc[0]["region"])
-    substation = str(row.iloc[0]["substation"])
-    lat, lon, name = REGION_COORDINATES.get(region, DEFAULT_REGION_COORDINATE)
-    dlat, dlon = _substation_jitter(substation)
-    return lat + dlat, lon + dlon, f"{name} · {substation}", region
 
 
 def _synthetic_forecast(latitude: float, longitude: float) -> list[DailyForecast]:
